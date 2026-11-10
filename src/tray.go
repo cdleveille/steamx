@@ -79,7 +79,7 @@ func (t *tray) flip() {
 
 // refresh updates the icon, tooltip and switch to match the manager's state.
 func (t *tray) refresh() {
-	on, pads, connected := t.mgr.status()
+	on, pads, controllers := t.mgr.status()
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.closed {
@@ -93,19 +93,15 @@ func (t *tray) refresh() {
 		}
 	}()
 	switch {
-	case !connected:
+	case controllers == 0:
 		systray.SetIcon(t.iconNone)
 		systray.SetTooltip("steamx: Steam Controller disconnected")
 	case !on:
 		systray.SetIcon(t.iconSteam)
-		systray.SetTooltip("steamx: Steam Controller connected in default mode")
+		systray.SetTooltip(connectedTooltip(controllers, "default"))
 	default:
 		systray.SetIcon(t.iconXInput)
-		noun := "Steam Controllers"
-		if pads == 1 {
-			noun = "Steam Controller"
-		}
-		systray.SetTooltip(fmt.Sprintf("steamx: %d %s connected in XInput mode", pads, noun))
+		systray.SetTooltip(connectedTooltip(pads, "XInput"))
 	}
 	if t.toggle != nil {
 		if on {
@@ -114,6 +110,15 @@ func (t *tray) refresh() {
 			t.toggle.Uncheck()
 		}
 	}
+}
+
+// connectedTooltip describes n Steam Controllers connected in the given mode.
+func connectedTooltip(n int, mode string) string {
+	noun := "Steam Controllers"
+	if n == 1 {
+		noun = "Steam Controller"
+	}
+	return fmt.Sprintf("steamx: %d %s connected in %s mode", n, noun, mode)
 }
 
 // renderIcon draws a gamepad silhouette in colour c as an antialiased 64x64 PNG.

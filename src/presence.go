@@ -3,7 +3,6 @@ package main
 import (
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"time"
 )
@@ -15,32 +14,29 @@ const (
 	presenceGrace = 1500 * time.Millisecond
 )
 
-// updatePresence works out whether any Steam Controller is connected and updates the tray.
+// updatePresence counts the connected Steam Controllers and updates the tray.
 func (m *manager) updatePresence() {
 	xinput := m.on.Load()
-	connected := m.pads.Load() > 0 || len(findBluetoothControllers()) > 0
+	n := len(findBluetoothControllers())
 	var probes []string
 	for _, c := range listUSBControllers() {
 		switch {
 		case c.pid == pidWired:
-			connected = true
+			n++
 		case !xinput: // in XInput mode a receiver's controllers are counted as pads
 			for _, s := range receiverSlots(c) {
 				if s.registered {
-					connected = true
+					n++
 				} else if s.node != "" {
 					probes = append(probes, s.node)
 				}
 			}
 		}
 	}
-	if !connected && len(probes) > 0 {
-		connected = m.probe(probes)
-	}
+	// The pads include the wired and Bluetooth controllers already counted.
+	n = max(n+countStreaming(probes), int(m.pads.Load()))
 
-	if connected {
-		m.lostAt = time.Time{}
-	} else if m.connected.Load() {
+	if n < int(m.controllers.Load()) {
 		if m.lostAt.IsZero() {
 			m.lostAt = time.Now()
 		}
@@ -48,7 +44,8 @@ func (m *manager) updatePresence() {
 			return
 		}
 	}
-	if m.connected.Swap(connected) != connected {
+	m.lostAt = time.Time{}
+	if m.controllers.Swap(int32(n)) != int32(n) {
 		m.changed()
 	}
 }
@@ -99,35 +96,20 @@ func steamRegistered(hidDir string) bool {
 	return false
 }
 
-// probe reports whether a controller is streaming on any receiver slot. The slot that last
-// had one is tried on its own first, so the usual case costs a single short read.
-func (m *manager) probe(nodes []string) bool {
-	if slices.Contains(nodes, m.lastStreaming) && probeSlot(m.lastStreaming) {
-		return true
-	}
-	m.lastStreaming = firstStreaming(nodes)
-	return m.lastStreaming != ""
-}
-
-// firstStreaming probes receiver slots concurrently and returns the first one a controller
-// is streaming on, or "" if there is none.
-func firstStreaming(nodes []string) string {
-	found := make(chan string, len(nodes))
+// countStreaming probes receiver slots concurrently and counts those a controller is
+// streaming on.
+func countStreaming(nodes []string) int {
+	streaming := make(chan bool, len(nodes))
 	for _, node := range nodes {
-		go func() {
-			if probeSlot(node) {
-				found <- node
-			} else {
-				found <- ""
-			}
-		}()
+		go func() { streaming <- probeSlot(node) }()
 	}
+	n := 0
 	for range nodes {
-		if node := <-found; node != "" {
-			return node
+		if <-streaming {
+			n++
 		}
 	}
-	return ""
+	return n
 }
 
 // probeSlot briefly listens to a receiver slot without sending anything. hid-steam is only

@@ -30,10 +30,10 @@ type attachment struct {
 // manager switches every connected Steam Controller between Steam mode (left alone) and
 // XInput mode (taken over and re-exposed as an Xbox 360 pad), including hot-plugged ones.
 type manager struct {
-	on        atomic.Bool
-	pads      atomic.Int32
-	connected atomic.Bool
-	onChange  func()
+	on          atomic.Bool
+	pads        atomic.Int32
+	controllers atomic.Int32
+	onChange    func()
 
 	kick    chan struct{}
 	quit    chan struct{}
@@ -43,9 +43,7 @@ type manager struct {
 	active  map[string]*attachment
 	retryAt map[string]time.Time
 	lastErr map[string]string
-	lostAt  time.Time // when the last connected controller was first found missing
-	// lastStreaming is the receiver slot a controller was last seen streaming on.
-	lastStreaming string
+	lostAt  time.Time // when fewer controllers than reported were first found
 }
 
 func newManager() *manager {
@@ -61,11 +59,11 @@ func newManager() *manager {
 
 func (m *manager) enabled() bool { return m.on.Load() }
 
-// status reports the mode, how many controllers are emulated as Xbox 360 pads, and
-// whether any Steam Controller is connected.
-func (m *manager) status() (xinput bool, pads int, connected bool) {
+// status reports the mode, how many controllers are emulated as Xbox 360 pads, and how
+// many Steam Controllers are connected.
+func (m *manager) status() (xinput bool, pads, controllers int) {
 	pads = int(m.pads.Load())
-	return m.on.Load(), pads, pads > 0 || m.connected.Load()
+	return m.on.Load(), pads, max(pads, int(m.controllers.Load()))
 }
 
 func (m *manager) setEnabled(on bool) {
