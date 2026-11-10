@@ -88,7 +88,7 @@ func (h *hidrawLink) read(buf []byte, timeout time.Duration) (int, error) {
 	if err := h.f.SetReadDeadline(time.Now().Add(timeout)); err != nil {
 		return 0, err
 	}
-	n, err := h.f.Read(buf)
+	n, err := readNoBlock(h.rc, buf)
 	if errors.Is(err, os.ErrDeadlineExceeded) {
 		return 0, errTimeout
 	}

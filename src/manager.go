@@ -44,6 +44,8 @@ type manager struct {
 	retryAt map[string]time.Time
 	lastErr map[string]string
 	lostAt  time.Time // when the last connected controller was first found missing
+	// lastStreaming is the receiver slot a controller was last seen streaming on.
+	lastStreaming string
 }
 
 func newManager() *manager {

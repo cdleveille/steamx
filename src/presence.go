@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 )
@@ -34,7 +35,7 @@ func (m *manager) updatePresence() {
 		}
 	}
 	if !connected && len(probes) > 0 {
-		connected = anyStreaming(probes)
+		connected = m.probe(probes)
 	}
 
 	if connected {
@@ -98,18 +99,35 @@ func steamRegistered(hidDir string) bool {
 	return false
 }
 
-// anyStreaming probes receiver slots concurrently and reports whether a controller is
-// streaming on any of them.
-func anyStreaming(nodes []string) bool {
-	results := make(chan bool, len(nodes))
+// probe reports whether a controller is streaming on any receiver slot. The slot that last
+// had one is tried on its own first, so the usual case costs a single short read.
+func (m *manager) probe(nodes []string) bool {
+	if slices.Contains(nodes, m.lastStreaming) && probeSlot(m.lastStreaming) {
+		return true
+	}
+	m.lastStreaming = firstStreaming(nodes)
+	return m.lastStreaming != ""
+}
+
+// firstStreaming probes receiver slots concurrently and returns the first one a controller
+// is streaming on, or "" if there is none.
+func firstStreaming(nodes []string) string {
+	found := make(chan string, len(nodes))
 	for _, node := range nodes {
-		go func() { results <- probeSlot(node) }()
+		go func() {
+			if probeSlot(node) {
+				found <- node
+			} else {
+				found <- ""
+			}
+		}()
 	}
-	found := false
 	for range nodes {
-		found = <-results || found
+		if node := <-found; node != "" {
+			return node
+		}
 	}
-	return found
+	return ""
 }
 
 // probeSlot briefly listens to a receiver slot without sending anything. hid-steam is only

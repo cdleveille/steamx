@@ -264,7 +264,7 @@ func (p *xpad) update(s padState) error {
 	}
 	b = appendEvent(b, evSyn, synReport, 0)
 	p.wbuf = b
-	if _, err := p.f.Write(b); err != nil {
+	if _, err := writeNoBlock(p.rc, b); err != nil {
 		return err
 	}
 	p.last = s

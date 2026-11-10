@@ -9,12 +9,15 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"syscall"
 
 	"fyne.io/systray"
 )
 
 func main() {
+	// steamx mostly waits; one scheduler thread avoids waking idle threads on many-core CPUs.
+	runtime.GOMAXPROCS(1)
 	log.SetFlags(log.LstdFlags)
 
 	lock, err := lockSingleInstance()
