@@ -71,11 +71,11 @@ func attachHidraw(node, name string, padsChanged func(int32)) (*attachment, erro
 	}
 	rc, err := f.SyscallConn()
 	if err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, err
 	}
 	h := &hidrawLink{f: f, rc: rc}
-	return startSession(name, []link{h}, false, padsChanged, func() { f.Close() }), nil
+	return startSession(name, []link{h}, false, padsChanged, func() { _ = f.Close() }), nil
 }
 
 type hidrawLink struct {

@@ -193,12 +193,12 @@ func newXpad(rumble func(strong, weak uint16)) (*xpad, error) {
 	}
 	rc, err := f.SyscallConn()
 	if err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, err
 	}
 	p := &xpad{f: f, rc: rc, rumble: rumble, ffDone: make(chan struct{})}
 	if err := p.create(); err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, fmt.Errorf("create virtual Xbox 360 pad: %w", err)
 	}
 	go p.ffLoop()
@@ -281,7 +281,7 @@ func appendEvent(b []byte, typ, code uint16, value int32) []byte {
 
 // Close removes the virtual pad and stops any rumble it started.
 func (p *xpad) Close() {
-	p.f.Close()
+	_ = p.f.Close()
 	<-p.ffDone
 }
 
@@ -371,7 +371,7 @@ func (p *xpad) handleFF(fx *[ffMaxEffects]ffSlot, typ, code uint16, value int32)
 		} else {
 			up.Retval = -int32(syscall.EINVAL)
 		}
-		rawIoctlPtr(p.rc, uiEndFFUpload, unsafe.Pointer(&up))
+		_, _ = rawIoctlPtr(p.rc, uiEndFFUpload, unsafe.Pointer(&up))
 
 	case typ == evUinput && code == uiFFErase:
 		er := uinputFFErase{RequestID: uint32(value)}
@@ -381,7 +381,7 @@ func (p *xpad) handleFF(fx *[ffMaxEffects]ffSlot, typ, code uint16, value int32)
 		if er.EffectID < ffMaxEffects {
 			fx[er.EffectID] = ffSlot{}
 		}
-		rawIoctlPtr(p.rc, uiEndFFErase, unsafe.Pointer(&er))
+		_, _ = rawIoctlPtr(p.rc, uiEndFFErase, unsafe.Pointer(&er))
 
 	case typ == evFF && int(code) < ffMaxEffects:
 		if value > 0 {

@@ -1,0 +1,14 @@
+{
+	"editor.defaultFormatter": "golang.go",
+	"editor.detectIndentation": false,
+	"editor.formatOnPaste": true,
+	"editor.formatOnSave": true,
+	"editor.insertSpaces": false,
+	"editor.tabSize": 4,
+
+	"files.insertFinalNewline": true,
+
+	"go.formatTool": "goimports",
+	"go.lintTool": "golangci-lint-v2",
+	"go.testOnSave": false
+}

@@ -200,12 +200,13 @@ func (d *usbDevice) claim(ifnum int) error {
 // close releases the interfaces and lets the kernel driver bind again, which makes the
 // controller reappear to Steam as a regular Steam Controller.
 func (d *usbDevice) close() {
+	// Best effort: these fail harmlessly when the controller has been unplugged.
 	for _, ifnum := range d.claimed {
 		n := uint32(ifnum)
-		ioctlPtr(uintptr(d.fd), usbdevfsReleaseInterface, unsafe.Pointer(&n))
-		d.reconnectDriver(ifnum)
+		_, _ = ioctlPtr(uintptr(d.fd), usbdevfsReleaseInterface, unsafe.Pointer(&n))
+		_ = d.reconnectDriver(ifnum)
 	}
-	syscall.Close(d.fd)
+	_ = syscall.Close(d.fd)
 }
 
 func (d *usbDevice) reconnectDriver(ifnum int) error {
@@ -301,10 +302,10 @@ func reattachOrphanedInterfaces() {
 					break
 				}
 			}
-			dev.reconnectDriver(it.num)
+			_ = dev.reconnectDriver(it.num)
 		}
 		if dev != nil {
-			syscall.Close(dev.fd)
+			_ = syscall.Close(dev.fd)
 		}
 	}
 }

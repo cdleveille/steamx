@@ -21,7 +21,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer lock.Close()
+	defer func() { _ = lock.Close() }()
 
 	reattachOrphanedInterfaces()
 
@@ -52,7 +52,7 @@ func lockSingleInstance() (*os.File, error) {
 		return nil, err
 	}
 	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, fmt.Errorf("already running (lock held on %s)", path)
 	}
 	return f, nil
