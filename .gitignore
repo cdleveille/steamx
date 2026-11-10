@@ -1,0 +1,12 @@
+# output
+dist
+
+# dotenv environment variable files
+.env
+.env.*
+
+# IntelliJ based IDEs
+.idea
+
+# Finder (MacOS) folder config
+.DS_Store
