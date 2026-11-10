@@ -5,6 +5,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BIN_DIR="$HOME/.local/bin"
 SERVICE_DIR="$HOME/.config/systemd/user"
 SERVICE_FILE="$SERVICE_DIR/steamx.service"
+GITHUB_REPO="cdleveille/steamx"
+RELEASE_BINARY_URL="https://github.com/${GITHUB_REPO}/releases/latest/download/steamx"
 
 if [ "$EUID" -eq 0 ]; then
     echo "Error: run this script as your normal user, not as root." >&2
@@ -13,16 +15,33 @@ fi
 
 cd "$SCRIPT_DIR"
 
-# ── 1. Build binary ───────────────────────────────────────────────────────────
-if ! command -v go &>/dev/null; then
-    echo "Error: go is required to build steamx. Install go and re-run this script." >&2
-    echo "https://go.dev" >&2
-    exit 1
-fi
-
-echo "Compiling from source..."
+# ── 1. Obtain binary ──────────────────────────────────────────────────────────
 mkdir -p dist
-CGO_ENABLED=0 go build -C src -trimpath -ldflags="-s -w" -o "$SCRIPT_DIR/dist/steamx" .
+echo "How would you like to install the steamx binary?"
+echo "  1) Download the latest release binary from GitHub (default)"
+echo "  2) Build from source"
+read -r -p "Select an option [1]: " install_method
+install_method="${install_method:-1}"
+
+if [ "$install_method" = "2" ]; then
+    if ! command -v go &>/dev/null; then
+        echo "Error: go is required to build from source. Install go, or re-run and choose to download the release binary." >&2
+        echo "https://go.dev" >&2
+        exit 1
+    fi
+
+    echo "Compiling from source..."
+    CGO_ENABLED=0 go build -C src -trimpath -ldflags="-s -w" -o "$SCRIPT_DIR/dist/steamx" .
+else
+    if ! command -v curl &>/dev/null; then
+        echo "Error: curl is required to download the release binary. Install curl, or re-run and choose to build from source." >&2
+        exit 1
+    fi
+
+    echo "Downloading latest release binary from $RELEASE_BINARY_URL..."
+    curl -fsSL "$RELEASE_BINARY_URL" -o "$SCRIPT_DIR/dist/steamx"
+    chmod +x "$SCRIPT_DIR/dist/steamx"
+fi
 
 # ── 2. Install binary ─────────────────────────────────────────────────────────
 echo "Installing binary to $BIN_DIR..."

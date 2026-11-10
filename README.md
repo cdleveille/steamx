@@ -21,7 +21,8 @@ automatically.
 
 ## Requirements
 
-- 64-bit Linux (x86_64 or arm64) with systemd, and Go 1.22 or newer (to build).
+- 64-bit Linux with systemd. The release binary is for x86_64; on arm64, build from
+  source with Go 1.22 or newer.
 - Steam's udev rules. They give your user access to `/dev/uinput` and the controller.
   On CachyOS/Arch, install them with `sudo pacman -S steam-devices`. Other distros have
   a package of the same name, and it's usually already installed with Steam.
@@ -36,10 +37,12 @@ From the repository root:
 ./install.sh
 ```
 
-This builds steamx, installs it to `~/.local/bin/steamx`, and creates, enables and starts
-the systemd user service `steamx.service`. From then on, steamx runs in the background
-and starts automatically with your desktop session. Re-run `./install.sh` to update
-after changing the code.
+The script asks how to get the binary: download the latest release from GitHub (the
+default, needs `curl`) or build it from source (needs Go 1.22 or newer). It then installs
+it to `~/.local/bin/steamx`, and creates, enables and starts the systemd user service
+`steamx.service`. From then on, steamx runs in the background and starts automatically
+with your desktop session. Re-run `./install.sh` to update; choose to build from
+source to install local changes.
 
 To remove the service and the binary:
 
