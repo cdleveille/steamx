@@ -30,9 +30,10 @@ type attachment struct {
 // manager switches every connected Steam Controller between Steam mode (left alone) and
 // XInput mode (taken over and re-exposed as an Xbox 360 pad), including hot-plugged ones.
 type manager struct {
-	on       atomic.Bool
-	pads     atomic.Int32
-	onChange func()
+	on        atomic.Bool
+	pads      atomic.Int32
+	connected atomic.Bool
+	onChange  func()
 
 	kick    chan struct{}
 	quit    chan struct{}
@@ -42,6 +43,7 @@ type manager struct {
 	active  map[string]*attachment
 	retryAt map[string]time.Time
 	lastErr map[string]string
+	lostAt  time.Time // when the last connected controller was first found missing
 }
 
 func newManager() *manager {
@@ -57,7 +59,12 @@ func newManager() *manager {
 
 func (m *manager) enabled() bool { return m.on.Load() }
 
-func (m *manager) status() (xinput bool, pads int) { return m.on.Load(), int(m.pads.Load()) }
+// status reports the mode, how many controllers are emulated as Xbox 360 pads, and
+// whether any Steam Controller is connected.
+func (m *manager) status() (xinput bool, pads int, connected bool) {
+	pads = int(m.pads.Load())
+	return m.on.Load(), pads, pads > 0 || m.connected.Load()
+}
 
 func (m *manager) setEnabled(on bool) {
 	if on {
@@ -74,17 +81,23 @@ func (m *manager) setEnabled(on bool) {
 		} else {
 			log.Print("XInput mode disabled")
 		}
-		select {
-		case m.kick <- struct{}{}:
-		default:
-		}
+		m.wake()
 	}
 	m.changed()
 }
 
 func (m *manager) padsChanged(delta int32) {
 	m.pads.Add(delta)
+	m.wake()
 	m.changed()
+}
+
+// wake makes run rescan without waiting for the next tick.
+func (m *manager) wake() {
+	select {
+	case m.kick <- struct{}{}:
+	default:
+	}
 }
 
 func (m *manager) changed() {
@@ -99,6 +112,7 @@ func (m *manager) run() {
 	defer tick.Stop()
 	for {
 		m.sync()
+		m.updatePresence()
 		select {
 		case <-tick.C:
 		case <-m.kick:

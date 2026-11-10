@@ -72,8 +72,9 @@ dependencies.
 ## Use
 
 - **Left-click** the tray icon, or right-click it and use the **XInput mode** switch.
-  A blue icon means Steam mode and a green icon means XInput mode. The tooltip shows
-  how many controllers are being emulated.
+  A blue icon means Steam mode, a green icon means XInput mode, and a white icon means
+  no Steam Controller is connected. The tooltip shows how many controllers are being
+  emulated.
 - **Quit** (or logging out) puts the controller back in Steam mode. If steamx crashes
   or is killed, systemd restarts it, which also restores the controller. Re-plugging
   the controller restores it too.

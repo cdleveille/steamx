@@ -21,6 +21,7 @@ type tray struct {
 	mu         sync.Mutex
 	toggle     *systray.MenuItem
 	closed     bool // the D-Bus connection is gone once the tray has exited
+	iconNone   []byte
 	iconSteam  []byte
 	iconXInput []byte
 }
@@ -28,6 +29,7 @@ type tray struct {
 func newTray(mgr *manager) *tray {
 	return &tray{
 		mgr:        mgr,
+		iconNone:   renderIcon(color.NRGBA{0xff, 0xff, 0xff, 0xff}),
 		iconSteam:  renderIcon(color.NRGBA{0x1a, 0x9f, 0xff, 0xff}),
 		iconXInput: renderIcon(color.NRGBA{0x3d, 0xbe, 0x4b, 0xff}),
 	}
@@ -77,7 +79,7 @@ func (t *tray) flip() {
 
 // refresh updates the icon, tooltip and switch to match the manager's state.
 func (t *tray) refresh() {
-	on, pads := t.mgr.status()
+	on, pads, connected := t.mgr.status()
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.closed {
@@ -90,16 +92,20 @@ func (t *tray) refresh() {
 			log.Printf("tray update failed: %v", r)
 		}
 	}()
-	if !on {
+	switch {
+	case !connected:
+		systray.SetIcon(t.iconNone)
+		systray.SetTooltip("steamx: Steam Controller disconnected")
+	case !on:
 		systray.SetIcon(t.iconSteam)
-		systray.SetTooltip("Steam mode: the Steam Controller works normally")
-	} else {
+		systray.SetTooltip("steamx: Steam Controller connected in default mode")
+	default:
 		systray.SetIcon(t.iconXInput)
-		if pads == 0 {
-			systray.SetTooltip("XInput mode: waiting for a Steam Controller")
-		} else {
-			systray.SetTooltip(fmt.Sprintf("XInput mode: %d Steam Controller(s) acting as Xbox 360 controller", pads))
+		noun := "Steam Controllers"
+		if pads == 1 {
+			noun = "Steam Controller"
 		}
+		systray.SetTooltip(fmt.Sprintf("steamx: %d %s connected in XInput mode", pads, noun))
 	}
 	if t.toggle != nil {
 		if on {
